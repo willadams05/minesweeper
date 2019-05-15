@@ -33,9 +33,13 @@ class Tile:
     def __init__(self, rect):
         self.rect = pygame.Rect(rect)
         self.is_clicked = False
+        self.is_flagged = False
 
     def set_clicked(self):
         self.is_clicked = True
+
+    def set_flagged(self):
+        self.is_flagged = True
 
 
 class Game:
@@ -162,7 +166,7 @@ class Game:
         tile.set_clicked()
 
         rect = tile.rect
-        center = (rect.x + 12, rect.y + 6)
+        center = (rect.x + 12, rect.y + 4)
 
         num = self.map[r][c]
 
@@ -192,25 +196,48 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT: sys.exit()
 
+            # Change the border color of the box to simulate clicking animation
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                pos = pygame.mouse.get_pos()
+                tile, r, c = self.get_clicked(pos)
+
+                # If the tile has been clicked before (or clicking outside the tiles), ignore the click
+                if tile is None or tile.is_clicked:
+                    continue
+                else:
+                    pygame.draw.rect(self.screen, Color.WHITE.value, tile.rect, 1)
+
+            # Once releasing mouse, determine if it was a right or left click
             elif event.type == pygame.MOUSEBUTTONUP:
                 pos = pygame.mouse.get_pos()
-
-                tile, r, c = self.find_clicked(pos)
+                tile, r, c = self.get_clicked(pos)
 
                 # If the tile has been clicked before (or clicking outside the tiles), ignore the click
                 if tile is None or tile.is_clicked:
                     continue
 
-                tile.set_clicked()
+                pygame.draw.rect(self.screen, Color.DARKGREY.value, tile.rect, 1)
+                # Update map if left-clicking
+                if event.button == 1:
 
-                pygame.draw.rect(self.screen, Color.WHITE.value, tile.rect, 1)
+                    # If the tile has been flagged, ignore the click but still show the animation
+                    if tile.is_flagged:
+                        continue
 
-                # Set the bomb map after first mouse click (so first click can't be a bomb)
-                if self.first_click:
-                    self.set_bombs(self.diff, r, c)
-                    self.first_click = False
+                    tile.set_clicked()
 
-                self.update_board(r, c)
+                    pygame.draw.rect(self.screen, Color.WHITE.value, tile.rect, 1)
+
+                    # Set the bomb map after first mouse click (so first click can't be a bomb)
+                    if self.first_click:
+                        self.set_bombs(self.diff, r, c)
+                        self.first_click = False
+
+                    self.update_board(r, c)
+                # Add a flag if right-clicking
+                else:
+                    pass
+
 
         pygame.display.flip()
 
@@ -219,7 +246,7 @@ class Game:
         self.screen.blit(self.font.render('Game Over', True, Color.RED.value), (100,100))
 
     # Helper function to find which rectangle was most recently clicked
-    def find_clicked(self, pos):
+    def get_clicked(self, pos):
         for r in range(len(self.tiles)):
             for c in range(len(self.tiles[0])):
                 tile = self.tiles[r][c]
