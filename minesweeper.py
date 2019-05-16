@@ -1,6 +1,7 @@
 import sys, pygame
 import numpy as np
 from enum import Enum
+import time
 
 class Color(Enum):
     RED = (255, 0, 0)
@@ -52,9 +53,10 @@ class Game:
         self.diff = diff
         self.map = [[]]
         self.tiles = [[]]
-        self.num_bombs = 0
-        self.dims = (0,0)
-        self.screen = self.font = self.flag = self.bomb = None
+        self.num_bombs = self.remaining_bombs = self.remaining_tiles = -1
+        self.dims = self.size = (0,0)
+        self.screen = self.font = None
+        self.flag = self.bomb = self.ximg = None
         self.first_click = True
         self.color_map = {
             1: Color.BLUE.value,
@@ -74,6 +76,7 @@ class Game:
         self.font = pygame.font.SysFont('arialblack', 20)
         self.bomb = pygame.image.load("Images/bomb.png")
         self.flag = pygame.image.load("Images/flag.png")
+        self.redx = pygame.image.load("Images/redx.png")
         self.set_dims(self.diff)
         self.create_board()
 
@@ -85,6 +88,11 @@ class Game:
             self.num_bombs = 99
         else:
             self.num_bombs = 10
+
+        # Note: remaining bombs does not display the actual number of bombs left on the map.
+        # Rather, it displays num_bombs - num_flags (so if a player randomly flags 99 locations, remaining_bombs = 0)
+        self.remaining_bombs = self.num_bombs
+        self.remaining_tiles = (self.dims[0] * self.dims[1]) - self.num_bombs
 
         # Pick num_bombs random coordinates to place the bombs
         rows = np.random.randint(self.dims[0], size=self.num_bombs)
@@ -112,6 +120,13 @@ class Game:
                 else:
                     self.map[r][c] = self.find_bombs(r,c)
 
+
+        # Display remaining bombs in the top-left corner
+        width = self.size[0]
+        height = self.size[1]
+        self.screen.blit(self.bomb, ((width / 4)-35, (height / 8) - 35))
+        self.screen.blit(self.font.render(': {0}'.format(self.remaining_bombs),
+                                          True, Color.BLUE.value), (width / 4, (height / 8) - 30))
         # Helpers.pretty_print(self.map)
 
 
@@ -143,8 +158,9 @@ class Game:
 
     def create_board(self):
         # Set the screen size (reverse dimensions because size is width x height)
-        size = [x * 40 for x in self.dims[::-1]]
-        self.screen = pygame.display.set_mode(size)
+        self.size = [x * 45 for x in self.dims[::-1]]
+        print(self.size)
+        self.screen = pygame.display.set_mode(self.size)
         self.screen.fill(Color.LIGHTGREY.value)
 
         # Initialize top layer of tiles
@@ -153,8 +169,9 @@ class Game:
         self.tiles = [[0 for x in range(cols)] for y in range(rows)]
         self.map = [[0 for x in range(cols)] for y in range(rows)]
         length = 35
-        left = size[0] / 15
-        top = size[1] / 15
+        scaling_factor = 9
+        left = self.size[0] / scaling_factor
+        top = self.size[1] / (scaling_factor/1.2)
         for r in range(rows):
             for c in range(cols):
                 rect = left,top,length,length
@@ -163,7 +180,7 @@ class Game:
                 pygame.draw.rect(self.screen, Color.ROYAL.value, rect)
                 pygame.draw.rect(self.screen, Color.DARKGREY.value, rect, 1)
                 left += length
-            left = size[0] / 15
+            left = self.size[0] / scaling_factor
             top += length
 
     # Function to update the board after a tile is clicked
@@ -176,13 +193,21 @@ class Game:
 
         num = self.map[r][c]
 
+        # If a bomb is clicked, player loses
         if num == '*':
-            self.game_over()
+            self.defeat()
             return
 
         # Color in the clicked square
         pygame.draw.rect(self.screen, Color.LIGHTGREY.value, rect)
         pygame.draw.rect(self.screen, Color.DARKGREY.value, rect, 1)
+
+        self.remaining_tiles -= 1
+
+        # If the player has clicked all non-bomb tiles, player wins
+        if self.remaining_tiles == 0:
+            self.victory()
+            return
 
         if num != 0:
             self.screen.blit(self.font.render('{0}'.format(num), True, self.get_color(num)), center)
@@ -200,7 +225,8 @@ class Game:
     # Function to refresh the game state at each timestep
     def refresh(self):
         for event in pygame.event.get():
-            if event.type == pygame.QUIT: sys.exit()
+            if event.type == pygame.QUIT:
+                sys.exit()
 
             # Change the border color of the box to simulate clicking animation
             elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -211,6 +237,7 @@ class Game:
                 if tile is None or tile.is_clicked:
                     continue
                 else:
+                    # Draw a white border around the clicked tile
                     pygame.draw.rect(self.screen, Color.WHITE.value, tile.rect, 1)
 
             # Once releasing mouse, determine if it was a right or left click
@@ -222,6 +249,7 @@ class Game:
                 if tile is None or tile.is_clicked:
                     continue
 
+                # Draw original border around the tile
                 pygame.draw.rect(self.screen, Color.DARKGREY.value, tile.rect, 1)
                 # Update map if left-clicking
                 if event.button == 1:
@@ -240,31 +268,56 @@ class Game:
                         self.first_click = False
 
                     self.update_board(r, c)
-                # Add a flag if right-clicking
+                # Add/remove a flag if right-clicking
                 else:
                     if tile.is_flagged:
                         pygame.draw.rect(self.screen, Color.ROYAL.value, tile.rect)
                         pygame.draw.rect(self.screen, Color.DARKGREY.value, tile.rect, 1)
                         tile.set_unflagged()
-                    else:
+                        if self.remaining_bombs != -1:
+                            self.remaining_bombs += 1
+                    # Only use flag if not all flags have been used
+                    elif self.remaining_bombs != 0:
                         tile.set_flagged()
                         self.screen.blit(self.flag, tile.rect)
-
+                        if self.remaining_bombs != -1:
+                            self.remaining_bombs -= 1
+                    if self.remaining_bombs != -1:
+                        # Draw grey rectangle over old number and re-draw number of remaining bombs
+                        width = self.size[0]
+                        height = self.size[1]
+                        pygame.draw.rect(self.screen, Color.LIGHTGREY.value, (width/4,(height / 8) - 30,40,30))
+                        self.screen.blit(self.font.render(': {0}'.format(self.remaining_bombs),
+                                                          True, Color.BLUE.value), (width / 4, (height / 8) - 30))
         pygame.display.flip()
 
-    def game_over(self):
-        self.font = pygame.font.SysFont('arialblack', 60)
-        width, height = pygame.display.get_surface().get_size()
+    # Displays bombs and incorrect flags and prompts the user to play again
+    def defeat(self):
+        self.font = pygame.font.SysFont('arialblack', self.dims[0]*2)
+        width = self.size[0]
+        height = self.size[1]
         # Display all bombs that weren't flagged upon losing
         for r in range(self.dims[0]):
             for c in range(self.dims[1]):
-                if self.has_bomb(r, c):
-                    tile = self.tiles[r][c]
-                    if tile.is_flagged:
-                        continue
-                    rect = tile.rect
+                tile = self.tiles[r][c]
+                rect = tile.rect
+                # If the tile was incorrectly flagged, display red X over flag
+                if tile.is_flagged and not self.has_bomb(r, c):
+                    self.screen.blit(self.redx, rect)
+                elif self.has_bomb(r, c):
+                    # if tile.is_flagged:
+                    #     continue
                     self.screen.blit(self.bomb, rect)
-        self.screen.blit(self.font.render('Game Over', True, Color.RED.value), (width / 3, height / 2.5))
+        self.screen.blit(self.font.render('Game Over', True, Color.RED.value), (width / 2.5, height / 12.5))
+        # TODO: Add quit / restart buttons
+        # TODO: sys.exit()
+        # TODO: restart with command line args
+
+    # Displays "victory" and prompts the user to play again
+    def victory(self):
+        width = self.size[0]
+        height = self.size[1]
+        self.screen.blit(self.font.render('Victory', True, Color.GREEN.value), (width / 2.5, height / 12.5))
 
     # Helper function that finds which rectangle was most recently clicked
     def get_clicked(self, pos):
