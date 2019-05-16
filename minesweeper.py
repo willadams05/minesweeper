@@ -7,6 +7,7 @@ import time
 class Color(Enum):
     RED = (255, 0, 0)
     GREEN = (0, 128, 0)
+    LIGHTGREEN = (0, 200, 0)
     BLUE = (0, 0, 255)
     ORANGE = (255, 128, 0)
     GREY = (155, 155, 155)
@@ -30,7 +31,9 @@ color_map = {
     "outerborder": Color.LIGHTBROWN.value,
     "clickborder": Color.WHITE.value,
     "background": Color.BLUEGREEN.value,
-    "text": Color.WHITE.value
+    "text": Color.WHITE.value,
+    "victory": Color.LIGHTGREEN.value,
+    "defeat": Color.RED.value
 }
 
 
@@ -410,7 +413,7 @@ class Game:
                     if tile.is_flagged:
                         continue
                     self.screen.blit(self.bomb, rect)
-        self.screen.blit(font.render('Game Over', True, Color.RED.value), (width / 2.5, height / 12.5))
+        self.screen.blit(font.render('Game Over', True, color_map["defeat"]), (width / 2.5, height / 12.5))
         self.restart()
 
     # Displays "victory" and prompts the user to play again
@@ -419,7 +422,7 @@ class Game:
         font = pygame.font.SysFont('arialblack', self.dims[0]*2)
         width = self.size[0]
         height = self.size[1]
-        self.screen.blit(font.render('Victory', True, Color.GREEN.value), (width / 2.5, height / 12.5))
+        self.screen.blit(font.render('Victory', True, color_map["victory"]), (width / 2.5, height / 12.5))
         self.restart()
 
     # Prompts the user to play again or quit after winning/losing
