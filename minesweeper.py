@@ -41,6 +41,8 @@ class Tile:
     def set_flagged(self):
         self.is_flagged = True
 
+    def set_unflagged(self):
+        self.is_flagged = False
 
 class Game:
     def __init__(self, diff):
@@ -50,7 +52,9 @@ class Game:
         self.diff = diff
         self.map = [[]]
         self.tiles = [[]]
-        self.dims = self.num_bombs = self.screen = self.font = None
+        self.num_bombs = 0
+        self.dims = (0,0)
+        self.screen = self.font = self.flag = self.bomb = None
         self.first_click = True
         self.color_map = {
             1: Color.BLUE.value,
@@ -68,6 +72,8 @@ class Game:
 
         # Set the font for displaying bomb numbers
         self.font = pygame.font.SysFont('arialblack', 20)
+        self.bomb = pygame.image.load("Images/bomb.png")
+        self.flag = pygame.image.load("Images/flag.png")
         self.set_dims(self.diff)
         self.create_board()
 
@@ -236,16 +242,31 @@ class Game:
                     self.update_board(r, c)
                 # Add a flag if right-clicking
                 else:
-                    pass
-
+                    if tile.is_flagged:
+                        pygame.draw.rect(self.screen, Color.ROYAL.value, tile.rect)
+                        pygame.draw.rect(self.screen, Color.DARKGREY.value, tile.rect, 1)
+                        tile.set_unflagged()
+                    else:
+                        tile.set_flagged()
+                        self.screen.blit(self.flag, tile.rect)
 
         pygame.display.flip()
 
     def game_over(self):
-        self.font = pygame.font.SysFont('Arial', 30)
-        self.screen.blit(self.font.render('Game Over', True, Color.RED.value), (100,100))
+        self.font = pygame.font.SysFont('arialblack', 60)
+        width, height = pygame.display.get_surface().get_size()
+        # Display all bombs that weren't flagged upon losing
+        for r in range(self.dims[0]):
+            for c in range(self.dims[1]):
+                if self.has_bomb(r, c):
+                    tile = self.tiles[r][c]
+                    if tile.is_flagged:
+                        continue
+                    rect = tile.rect
+                    self.screen.blit(self.bomb, rect)
+        self.screen.blit(self.font.render('Game Over', True, Color.RED.value), (width / 3, height / 2.5))
 
-    # Helper function to find which rectangle was most recently clicked
+    # Helper function that finds which rectangle was most recently clicked
     def get_clicked(self, pos):
         for r in range(len(self.tiles)):
             for c in range(len(self.tiles[0])):
@@ -254,11 +275,11 @@ class Game:
                     return tile, r, c
         return None, 0, 0
 
-    # Helper function to return a color based on the number of nearby bombs
+    # Helper function that returns a color based on the number of nearby bombs
     def get_color(self, num):
         return self.color_map[num]
 
-    # Returns array of valid neighboring indices
+    # Helper function that returns array of valid neighboring indices
     def get_neighbors(self, r, c):
         rows = [r-1, r, r+1]
         cols = [c-1, c, c+1]
