@@ -115,6 +115,7 @@ class Game:
         self.old_time = 0
         self.screen = None
         self.font = pygame.font.SysFont('arialblack', 20)
+        self.logo = pygame.image.load("Images/better_logo.png")
         self.bomb = pygame.image.load("Images/bomb.png")
         self.flag = pygame.image.load("Images/flag.png")
         self.redx = pygame.image.load("Images/redx.png")
@@ -134,6 +135,45 @@ class Game:
         # Change the dimensions of the screen depending on the difficulty
         self.set_dims(self.diff)
         self.create_board()
+
+    # Sets the dimensions of the map depending on the difficulty
+    def set_dims(self, diff):
+        if diff == "medium":
+            self.dims = (16,16)
+        elif diff == "hard":
+            self.dims = (16,30)
+        else:
+            self.dims = (8,8)
+
+    def create_board(self):
+        # Set the screen size (reverse dimensions because size is width x height)
+        self.size = [x * 45 for x in self.dims[::-1]]
+        self.screen = pygame.display.set_mode(self.size)
+        self.screen.fill(color_map["background"])
+        # Display logo on top of screen (if the screen is big enough)
+        if self.diff == "medium":
+            self.screen.blit(self.logo, (self.size[0]/4, 0))
+        if self.diff == "hard":
+            self.screen.blit(self.logo, (self.size[0]/3, 0))
+        # Initialize top layer of tiles
+        rows = self.dims[0]
+        cols = self.dims[1]
+        self.tiles = [[0 for x in range(cols)] for y in range(rows)]
+        self.map = [[0 for x in range(cols)] for y in range(rows)]
+        length = 35
+        scaling_factor = 9
+        left = self.size[0] / scaling_factor
+        top = self.size[1] / (scaling_factor/1.2)
+        for r in range(rows):
+            for c in range(cols):
+                rect = left,top,length,length
+                self.tiles[r][c] = Tile(rect)
+                # Draw tile with border rectangle
+                pygame.draw.rect(self.screen, color_map["tile"], rect)
+                pygame.draw.rect(self.screen, color_map["border"], rect, 1)
+                left += length
+            left = self.size[0] / scaling_factor
+            top += length
 
     def set_bombs(self, diff, clicked_r, clicked_c):
         # Set the number of bombs
@@ -202,41 +242,6 @@ class Game:
     # Returns true if the given position has a bomb
     def has_bomb(self, r, c):
         return self.map[r][c] == '*'
-
-    # Sets the dimensions of the map depending on the difficulty
-    def set_dims(self, diff):
-        if diff == "medium":
-            self.dims = (16,16)
-        elif diff == "hard":
-            self.dims = (16,30)
-        else:
-            self.dims = (8,8)
-
-    def create_board(self):
-        # Set the screen size (reverse dimensions because size is width x height)
-        self.size = [x * 45 for x in self.dims[::-1]]
-        self.screen = pygame.display.set_mode(self.size)
-        self.screen.fill(color_map["background"])
-
-        # Initialize top layer of tiles
-        rows = self.dims[0]
-        cols = self.dims[1]
-        self.tiles = [[0 for x in range(cols)] for y in range(rows)]
-        self.map = [[0 for x in range(cols)] for y in range(rows)]
-        length = 35
-        scaling_factor = 9
-        left = self.size[0] / scaling_factor
-        top = self.size[1] / (scaling_factor/1.2)
-        for r in range(rows):
-            for c in range(cols):
-                rect = left,top,length,length
-                self.tiles[r][c] = Tile(rect)
-                # Draw tile with border rectangle
-                pygame.draw.rect(self.screen, color_map["tile"], rect)
-                pygame.draw.rect(self.screen, color_map["border"], rect, 1)
-                left += length
-            left = self.size[0] / scaling_factor
-            top += length
 
     # Function to update the board after a tile is clicked
     def update_board(self, r, c):
