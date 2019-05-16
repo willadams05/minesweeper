@@ -309,6 +309,8 @@ class Game:
                         break
                     elif self.no_rect.collidepoint(pos):
                         sys.exit()
+                    # Don't allow other buttons to be pressed while the play again menu is up
+                    continue
 
                 tile, r, c = self.get_clicked(pos)
 
