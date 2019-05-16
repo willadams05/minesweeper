@@ -315,6 +315,7 @@ class Game:
 
     # Displays "victory" and prompts the user to play again
     def victory(self):
+        self.font = pygame.font.SysFont('arialblack', self.dims[0]*2)
         width = self.size[0]
         height = self.size[1]
         self.screen.blit(self.font.render('Victory', True, Color.GREEN.value), (width / 2.5, height / 12.5))
@@ -351,7 +352,7 @@ class Game:
 
 def main():
     # TODO: Initialize the game with sys args
-    game = Game("expert")
+    game = Game("intermediate")
     game.initialize()
 
     # TODO: Refresh on a timer
