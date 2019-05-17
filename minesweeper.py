@@ -200,12 +200,12 @@ class Game:
         for i in range(self.num_bombs):
             r = rows[i]
             c = cols[i]
-            # If this position is bomb-free and was not the first-clicked position, add a bomb
-            if self.map[r][c] != '*' and (r != clicked_r or c != clicked_c):
+            # If this position is bomb-free and is not adjacent to the first-clicked position, add a bomb
+            if self.map[r][c] != '*' and not (abs(r-clicked_r) + abs(c-clicked_c)) <= 2:
                 self.map[r][c] = '*'
             # Otherwise, find a new bomb location
             else:
-                while self.map[r][c] == '*' or (r == clicked_r and c == clicked_c):
+                while self.map[r][c] == '*' or (abs(r-clicked_r) + abs(c-clicked_c)) <= 2:
                     r = np.random.randint(self.dims[0])
                     c = np.random.randint(self.dims[1])
                 self.map[r][c] = '*'
@@ -216,7 +216,7 @@ class Game:
                 if self.has_bomb(r, c):
                     continue
                 else:
-                    self.map[r][c] = self.find_bombs(r,c)
+                    self.map[r][c] = self.count_bombs(r,c)
 
         # Display remaining bombs in the top-left corner
         width = self.size[0]
@@ -231,7 +231,7 @@ class Game:
 
     # Finds all neighboring bombs around a given position
     # Need to check all 8 neighboring bombs, unless the position is along a wall or in a corner
-    def find_bombs(self, r, c):
+    def count_bombs(self, r, c):
         num_neighbors = 0
         rows, cols = self.get_neighbors(r, c)
         for i in rows:
