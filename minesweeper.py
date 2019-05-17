@@ -2,6 +2,7 @@ import sys, pygame
 import numpy as np
 from enum import Enum
 import time
+import os
 
 
 class Color(Enum):
@@ -469,6 +470,11 @@ class Game:
 
 
 def main():
+    # Set the top-left corner of the pygame screen
+    x = 200
+    y = 100
+    os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (x, y)
+
     pygame.init()
 
     while 1:
@@ -477,7 +483,6 @@ def main():
             menu.refresh()
 
         game = Game(menu.difficulty)
-
         while not game.play_again:
             game.refresh()
 
